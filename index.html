@@ -45,18 +45,61 @@
     }
 
     /* ── TECH GRID & GLOW VEIL ── */
-    .tech-grid{position:fixed;inset:0;z-index:-2;pointer-events:none;
+    .tech-grid{position:fixed;inset:0;z-index:-3;pointer-events:none;
       background-image:linear-gradient(rgba(56,189,248,.06) 1px,transparent 1px),
                        linear-gradient(90deg,rgba(56,189,248,.06) 1px,transparent 1px);
       background-size:46px 46px;
       -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 35%,transparent 78%);
       mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 35%,transparent 78%);
+      animation:gridPan 30s linear infinite;
+    }
+    @keyframes gridPan{
+      0%{background-position:0 0,0 0;}
+      100%{background-position:0 46px,46px 0;}
     }
     .tech-glow{position:fixed;inset:0;z-index:-1;pointer-events:none;
       background:
         radial-gradient(620px 360px at 12% -6%,rgba(34,211,238,.16),transparent 65%),
         radial-gradient(660px 400px at 92% 6%,rgba(168,85,247,.14),transparent 65%),
         radial-gradient(720px 520px at 50% 112%,rgba(59,130,246,.12),transparent 70%);
+    }
+
+    /* ── ANIMATED ORBS (aurora drift) ── */
+    .tech-orb{position:fixed;z-index:-4;pointer-events:none;border-radius:50%;
+      filter:blur(70px);opacity:.55;will-change:transform;}
+    .tech-orb.o1{width:540px;height:540px;left:-160px;top:-140px;
+      background:radial-gradient(circle,rgba(34,211,238,.38),transparent 70%);
+      animation:orbA 28s ease-in-out infinite alternate;}
+    .tech-orb.o2{width:480px;height:480px;right:-140px;top:24%;
+      background:radial-gradient(circle,rgba(168,85,247,.34),transparent 70%);
+      animation:orbB 34s ease-in-out infinite alternate;}
+    .tech-orb.o3{width:580px;height:580px;left:28%;bottom:-240px;
+      background:radial-gradient(circle,rgba(59,130,246,.3),transparent 70%);
+      animation:orbC 40s ease-in-out infinite alternate;}
+    @keyframes orbA{to{transform:translate(170px,150px) scale(1.15);}}
+    @keyframes orbB{to{transform:translate(-160px,130px) scale(1.22);}}
+    @keyframes orbC{to{transform:translate(130px,-170px) scale(1.1);}}
+
+    /* ── PARTICLE NETWORK ── */
+    #particles{position:fixed;inset:0;z-index:-2;pointer-events:none;}
+
+    /* ── SCAN BEAM sweep ── */
+    .scan-beam{position:fixed;left:-25%;right:-25%;height:150px;z-index:-1;
+      pointer-events:none;opacity:0;transform:rotate(-6deg);
+      background:linear-gradient(100deg,transparent 0%,
+        rgba(34,211,238,.05) 36%,rgba(99,102,241,.14) 50%,
+        rgba(34,211,238,.05) 64%,transparent 100%);
+      animation:scanSweep 9s linear infinite;}
+    @keyframes scanSweep{
+      0%{top:-14%;opacity:0;}
+      7%{opacity:1;}
+      52%{top:112%;opacity:1;}
+      60%{opacity:0;}
+      100%{top:112%;opacity:0;}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .tech-grid,.tech-orb,.scan-beam{animation:none !important;}
     }
 
     a { color: inherit; text-decoration: none; }
@@ -500,7 +543,12 @@
 
 <!-- TECH BACKDROP -->
 <div class="tech-grid"></div>
+<div class="tech-orb o1"></div>
+<div class="tech-orb o2"></div>
+<div class="tech-orb o3"></div>
+<canvas id="particles"></canvas>
 <div class="tech-glow"></div>
+<div class="scan-beam"></div>
 
 <!-- NAV -->
 <nav>
@@ -1068,6 +1116,93 @@
       links.style.cssText = 'display:flex;flex-direction:column;position:absolute;top:60px;left:0;right:0;background:rgba(5,11,24,0.97);border-bottom:1px solid var(--line);padding:16px 24px;gap:14px;z-index:99;backdrop-filter:blur(12px);';
     }
   });
+</script>
+<script>
+  // Interactive particle network (cyan/violet)
+  (function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var canvas = document.getElementById('particles');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var COLORS = ['34,211,238', '56,189,248', '99,102,241', '168,85,247'];
+    var LINK = 140, MOUSE_LINK = 190;
+    var W = 0, H = 0, dots = [];
+    var mouse = { x: -1e4, y: -1e4 };
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      var n = Math.min(110, Math.max(32, Math.round(W * H / 15000)));
+      dots = [];
+      for (var i = 0; i < n; i++) {
+        dots.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random() - .5) * .5, vy: (Math.random() - .5) * .5,
+          r: Math.random() * 1.7 + .7,
+          c: COLORS[(Math.random() * COLORS.length) | 0]
+        });
+      }
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, W, H);
+      var i, j, a, b, dx, dy, d2, t;
+      for (i = 0; i < dots.length; i++) {
+        a = dots[i];
+        dx = mouse.x - a.x; dy = mouse.y - a.y;
+        var md = Math.sqrt(dx * dx + dy * dy);
+        if (md < 240 && md > 0.01) {
+          var f = (240 - md) / 240 * .014;
+          a.vx += (dx / md) * f; a.vy += (dy / md) * f;
+        }
+        a.vx *= .985; a.vy *= .985;
+        a.x += a.vx; a.y += a.vy;
+        if (a.x < -20) a.x = W + 20; else if (a.x > W + 20) a.x = -20;
+        if (a.y < -20) a.y = H + 20; else if (a.y > H + 20) a.y = -20;
+      }
+      for (i = 0; i < dots.length; i++) {
+        a = dots[i];
+        for (j = i + 1; j < dots.length; j++) {
+          b = dots[j];
+          dx = a.x - b.x; dy = a.y - b.y;
+          d2 = dx * dx + dy * dy;
+          if (d2 < LINK * LINK) {
+            t = 1 - Math.sqrt(d2) / LINK;
+            ctx.strokeStyle = 'rgba(56,189,248,' + (t * .16).toFixed(3) + ')';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+        }
+        dx = a.x - mouse.x; dy = a.y - mouse.y;
+        d2 = dx * dx + dy * dy;
+        if (d2 < MOUSE_LINK * MOUSE_LINK) {
+          t = 1 - Math.sqrt(d2) / MOUSE_LINK;
+          ctx.strokeStyle = 'rgba(168,85,247,' + (t * .3).toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(mouse.x, mouse.y); ctx.stroke();
+        }
+      }
+      for (i = 0; i < dots.length; i++) {
+        a = dots[i];
+        ctx.fillStyle = 'rgba(' + a.c + ',.85)';
+        ctx.shadowColor = 'rgba(' + a.c + ',.8)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      requestAnimationFrame(tick);
+    }
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', function (e) { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('mouseout', function () { mouse.x = -1e4; mouse.y = -1e4; });
+    window.addEventListener('touchmove', function (e) {
+      if (e.touches && e.touches[0]) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; }
+    }, { passive: true });
+
+    resize();
+    requestAnimationFrame(tick);
+  })();
 </script>
 </body>
 </html>
