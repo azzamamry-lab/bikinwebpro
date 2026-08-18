@@ -356,7 +356,7 @@ details[open] .faq-icon{transform:rotate(45deg);color:var(--cyan)}
 
 /* ── KONTAK ── */
 #kontak{background:var(--bg1)}
-.kontak-layout{display:grid;grid-template-columns:1fr 1.4fr;gap:64px;align-items:start}
+.kontak-layout{max-width:640px}
 .kontak-info h2{margin-bottom:14px}
 .kontak-info>p{color:var(--text-mid);font-size:.95rem;line-height:1.72;margin-bottom:32px}
 .contact-items{display:flex;flex-direction:column;gap:12px}
@@ -378,61 +378,6 @@ details[open] .faq-icon{transform:rotate(45deg);color:var(--cyan)}
 .ci-label{font-family:var(--mono);font-size:.68rem;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
 .ci-val{font-weight:600;color:var(--text)}
 
-.form-card{
-  background:var(--bg2);border:1px solid var(--line-md);
-  border-radius:14px;padding:36px 32px;
-  position:relative;
-}
-.form-card::before{
-  content:'';position:absolute;inset:-1px;border-radius:15px;
-  background:linear-gradient(135deg,rgba(34,211,238,.25),rgba(167,139,250,.15),transparent 60%);
-  z-index:-1;pointer-events:none;
-}
-.form-card h3{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:6px}
-.form-card .form-sub{font-size:.84rem;color:var(--text-mid);margin-bottom:26px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.field label{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em}
-.field input,.field select,.field textarea{
-  border:1px solid var(--line-md);border-radius:8px;
-  padding:10px 14px;
-  font-family:var(--sans);font-size:.9rem;color:var(--text);
-  background:var(--bg0);outline:none;
-  transition:border-color .2s,box-shadow .2s;
-}
-.field input:focus,.field select,.field textarea:focus{border-color:rgba(34,211,238,.5);box-shadow:0 0 0 3px rgba(34,211,238,.07)}
-.field select{cursor:pointer}
-.field select option{background:var(--bg1)}
-.field textarea{resize:vertical;min-height:100px}
-.channel-group{display:flex;gap:8px;flex-wrap:wrap}
-.channel-btn{
-  flex:1;min-width:80px;padding:9px;
-  border:1px solid var(--line-md);border-radius:8px;
-  font-family:var(--sans);font-size:.83rem;font-weight:600;
-  cursor:pointer;background:var(--bg0);color:var(--text-mid);
-  transition:all .2s;text-align:center;
-}
-.channel-btn.active{border-color:rgba(34,211,238,.5);background:rgba(34,211,238,.08);color:var(--cyan)}
-.submit-btn{
-  width:100%;padding:14px;
-  background:var(--grad-main);color:#060810;
-  border:none;border-radius:var(--radius);
-  font-family:var(--sans);font-size:.95rem;font-weight:700;
-  cursor:pointer;transition:all .2s;margin-top:8px;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 0 24px rgba(34,211,238,.25);
-}
-.submit-btn:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(34,211,238,.4)}
-.submit-btn svg{width:16px;height:16px}
-.form-note{font-size:.74rem;color:var(--text-dim);margin-top:10px;text-align:center;line-height:1.5}
-.success-msg{
-  display:none;background:rgba(34,211,238,.07);
-  border:1px solid rgba(34,211,238,.3);
-  border-radius:var(--radius);padding:14px 18px;
-  font-size:.9rem;color:var(--cyan);font-weight:600;
-  align-items:center;gap:10px;
-}
-.success-msg svg{width:18px;height:18px;flex-shrink:0}
 
 /* ── FOOTER ── */
 footer{background:var(--bg0);border-top:1px solid var(--line);padding:52px 24px 32px;position:relative;z-index:1}
@@ -789,68 +734,7 @@ footer{background:var(--bg0);border-top:1px solid var(--line);padding:52px 24px 
         </div>
       </div>
 
-      <div class="form-card">
-        <h3>Ceritakan kebutuhanmu</h3>
-        <p class="form-sub">Gratis konsultasi, tanpa kewajiban. Kami bantu arahkan solusi yang paling tepat & hemat untuk bisnismu.</p>
-        <div id="successMsg" class="success-msg">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-          Terima kasih! Pesanmu sudah terkirim. Kami akan segera menghubungi kamu.
-        </div>
-        <form id="contactForm" novalidate>
-          <div class="form-row">
-            <div class="field">
-              <label for="nama">Nama Lengkap *</label>
-              <input type="text" id="nama" placeholder="Budi Santoso" required/>
-            </div>
-            <div class="field">
-              <label for="hp">WhatsApp / No. HP *</label>
-              <input type="tel" id="hp" placeholder="08xx-xxxx-xxxx" required/>
-            </div>
-          </div>
-          <div class="field">
-            <label for="email">Email *</label>
-            <input type="email" id="email" placeholder="kamu@email.com" required/>
-          </div>
-          <div class="field">
-            <label for="layanan">Jenis Layanan</label>
-            <select id="layanan">
-              <option value="">— Pilih jenis —</option>
-              <option>Landing Page</option>
-              <option>Company Profile</option>
-              <option>Website Toko / E-Commerce</option>
-              <option>Web Profil / Blog</option>
-              <option>Sistem / Aplikasi Web</option>
-              <option>Maintenance &amp; Update</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="budget">Perkiraan Budget</label>
-            <select id="budget">
-              <option value="">— Pilih paket —</option>
-              <option>Starter (mulai Rp 750rb)</option>
-              <option>Bisnis (mulai Rp 2,5jt)</option>
-              <option>Pro / Custom (Rp 7jt+)</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="pesan">Ceritakan Project Kamu *</label>
-            <textarea id="pesan" placeholder="Ceritakan kebutuhan, referensi, atau pertanyaan kamu..." required></textarea>
-          </div>
-          <div class="field">
-            <label>Metode yang diinginkan</label>
-            <div class="channel-group">
-              <button type="button" class="channel-btn active" onclick="setChannel(this)">WhatsApp</button>
-              <button type="button" class="channel-btn" onclick="setChannel(this)">Email</button>
-              <button type="button" class="channel-btn" onclick="setChannel(this)">Telepon</button>
-            </div>
-          </div>
-          <button type="submit" class="submit-btn">
-            Kirim Permintaan
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></svg>
-          </button>
-          <p class="form-note">Dengan mengirim, kamu setuju dihubungi tim kami untuk tindak lanjut project.</p>
-        </form>
-      </div>
+      
     </div>
   </div>
 </section>
@@ -905,15 +789,7 @@ footer{background:var(--bg0);border-top:1px solid var(--line);padding:52px 24px 
 
 <script>
 /* ── UI helpers ── */
-function setChannel(btn){
-  document.querySelectorAll('.channel-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-}
-document.getElementById('contactForm').addEventListener('submit',function(e){
-  e.preventDefault();
-  document.getElementById('successMsg').style.display='flex';
-  this.style.display='none';
-});
+
 document.querySelector('.hamburger').addEventListener('click',function(){
   const links=document.querySelector('.nav-links');
   if(links.style.display==='flex'){links.style.display=''}
