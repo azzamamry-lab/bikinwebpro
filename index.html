@@ -42,11 +42,16 @@
 }
 
 html{scroll-behavior:smooth;font-size:16px}
-body{font-family:var(--sans);background:var(--bg0);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{font-family:var(--sans);background:var(--bg0);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden;cursor:none}
+body *{cursor:none}
 a{color:inherit;text-decoration:none}
 
 /* animated canvas bg */
 #bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
+/* custom cursor */
+.custom-cursor{position:fixed;width:20px;height:20px;border:2px solid rgba(34,211,238,.7);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,border-color .15s}
+.custom-cursor.hover{width:40px;height:40px;border-color:rgba(34,211,238,.4)}
+.cursor-dot{position:fixed;width:6px;height:6px;background:rgba(34,211,238,.9);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
 
 /* ── NAV ── */
 nav{
@@ -436,6 +441,8 @@ footer{background:var(--bg0);border-top:1px solid var(--line);padding:52px 24px 
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
+<div class="custom-cursor" id="cursor"></div>
+<div class="cursor-dot" id="cursorDot"></div>
 
 <!-- NAV -->
 <nav>
@@ -835,25 +842,7 @@ document.querySelector('.hamburger').addEventListener('click',function(){
     gridOffset+=.15;
   }
 
-  /* ── LAYER 2: scanning beam ── */
-  let scanY=0;
-  function drawScan(t){
-    scanY=(scanY+.4)%H;
-    const grad=ctx.createLinearGradient(0,scanY-80,0,scanY+4);
-    grad.addColorStop(0,'transparent');
-    grad.addColorStop(.7,rgb(C.cyan,.04));
-    grad.addColorStop(1,rgb(C.cyan,.18));
-    ctx.fillStyle=grad;
-    ctx.fillRect(0,scanY-80,W,84);
-
-    // second slower scan
-    const y2=((t*0.02)+H*0.6)%H;
-    const g2=ctx.createLinearGradient(0,y2-60,0,y2+3);
-    g2.addColorStop(0,'transparent');
-    g2.addColorStop(1,rgb(C.violet,.1));
-    ctx.fillStyle=g2;
-    ctx.fillRect(0,y2-60,W,63);
-  }
+  
 
   /* ── LAYER 3: nodes & connection lines ── */
   const NODE_COUNT=38;
@@ -1046,6 +1035,64 @@ document.querySelector('.hamburger').addEventListener('click',function(){
     });
   }
 
+  /* ── CURSOR TRACKING ── */
+  let mouseX=-1000, mouseY=-1000;
+  let mouseActive=false;
+  let cursorTrail=[];
+  const TRAIL_LEN=18;
+
+  document.addEventListener('mousemove',e=>{
+    mouseX=e.clientX; mouseY=e.clientY;
+    mouseActive=true;
+    cursorTrail.unshift({x:mouseX,y:mouseY,t:Date.now()});
+    if(cursorTrail.length>TRAIL_LEN)cursorTrail.pop();
+  });
+  document.addEventListener('mouseleave',()=>{
+    mouseActive=false;
+    mouseX=-1000;mouseY=-1000;
+    cursorTrail=[];
+  });
+
+  function drawCursor(t){
+    if(!mouseActive)return;
+    const MOUSE_RADIUS=200;
+    const MOUSE_CONNECT=220;
+
+    // glow around cursor
+    const g=ctx.createRadialGradient(mouseX,mouseY,0,mouseX,mouseY,MOUSE_RADIUS);
+    g.addColorStop(0,rgb(C.cyan,.12));
+    g.addColorStop(.5,rgb(C.blue,.04));
+    g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(mouseX,mouseY,MOUSE_RADIUS,0,Math.PI*2);ctx.fill();
+n    // cursor dot
+    ctx.beginPath();ctx.arc(mouseX,mouseY,4,0,Math.PI*2);
+    ctx.fillStyle=rgb(C.cyan,.9);ctx.fill();
+    ctx.beginPath();ctx.arc(mouseX,mouseY,8,0,Math.PI*2);
+    ctx.strokeStyle=rgb(C.cyan,.4);ctx.lineWidth=1.5;ctx.stroke();
+n    // cursor trail
+    for(let i=1;i<cursorTrail.length;i++){
+      const p=cursorTrail[i];
+      const alpha=(1-i/TRAIL_LEN)*0.35;
+      const r=3*(1-i/TRAIL_LEN);
+      ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);
+      ctx.fillStyle=rgb(C.cyan,alpha);ctx.fill();
+    }
+
+    // connect cursor to nearby nodes
+    nodes.forEach(n=>{
+      const dx=n.x-mouseX, dy=n.y-mouseY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<MOUSE_CONNECT){
+        const alpha=(1-dist/MOUSE_CONNECT)*0.5;
+        ctx.beginPath();ctx.moveTo(mouseX,mouseY);ctx.lineTo(n.x,n.y);
+        ctx.strokeStyle=rgb(C.cyan,alpha);ctx.lineWidth=1.2;ctx.stroke();
+        // bright dot on node
+        ctx.beginPath();ctx.arc(n.x,n.y,3,0,Math.PI*2);
+        ctx.fillStyle=rgb(C.cyan,.6);ctx.fill();
+      }
+    });
+  }
+
   /* ── main loop ── */
   function initAll(){initNodes();initRings();initStreams();initTraces()}
   function loop(t){
@@ -1055,8 +1102,8 @@ document.querySelector('.hamburger').addEventListener('click',function(){
     drawTraces(t);
     drawNodes(t);
     drawRings(t);
-    drawScan(t);
     drawStreams();
+    drawCursor(t);
     raf=requestAnimationFrame(loop);
   }
 
@@ -1070,6 +1117,31 @@ document.querySelector('.hamburger').addEventListener('click',function(){
     else{raf=requestAnimationFrame(loop)}
   });
 })();
+</script>
+<script>
+/* ── custom cursor ── */
+const cursor=document.getElementById('cursor');
+const cursorDot=document.getElementById('cursorDot');
+let cx=0,cy=0,dx=0,dy=0;
+document.addEventListener('mousemove',e=>{
+  dx=e.clientX;dy=e.clientY;
+  cursorDot.style.left=dx+'px';
+  cursorDot.style.top=dy+'px';
+});
+function animCursor(){
+  cx+=(dx-cx)*0.15;
+  cy+=(dy-cy)*0.15;
+  cursor.style.left=cx+'px';
+  cursor.style.top=cy+'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+/* hover effect on links & buttons */
+document.querySelectorAll('a,button,.btn-glow,.btn-price,.nav-cta,.social-btn').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursor.classList.add('hover'));
+  el.addEventListener('mouseleave',()=>cursor.classList.remove('hover'));
+});
 </script>
 </body>
 </html>
