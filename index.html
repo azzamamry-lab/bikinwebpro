@@ -45,14 +45,8 @@ html{scroll-behavior:smooth;font-size:16px}
 body{font-family:var(--sans);background:var(--bg0);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 
-/* grid bg */
-body::before{
-  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
-  background-image:
-    linear-gradient(rgba(96,165,250,.04) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(96,165,250,.04) 1px,transparent 1px);
-  background-size:60px 60px;
-}
+/* animated canvas bg */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%}
 
 /* ── NAV ── */
 nav{
@@ -496,6 +490,7 @@ footer{background:var(--bg0);border-top:1px solid var(--line);padding:52px 24px 
 </style>
 </head>
 <body>
+<canvas id="bg-canvas"></canvas>
 
 <!-- NAV -->
 <nav>
@@ -909,6 +904,7 @@ footer{background:var(--bg0);border-top:1px solid var(--line);padding:52px 24px 
 </a>
 
 <script>
+/* ── UI helpers ── */
 function setChannel(btn){
   document.querySelectorAll('.channel-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -923,6 +919,281 @@ document.querySelector('.hamburger').addEventListener('click',function(){
   if(links.style.display==='flex'){links.style.display=''}
   else{links.style.cssText='display:flex;flex-direction:column;position:absolute;top:62px;left:0;right:0;background:rgba(6,8,16,.97);border-bottom:1px solid rgba(96,165,250,.12);padding:16px 24px;gap:16px;z-index:99;backdrop-filter:blur(16px);'}
 });
+
+/* ══════════════════════════════════════
+   ANIMATED BACKGROUND — Tech Wallpaper
+   ══════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, raf;
+
+  /* ── palette ── */
+  const C = {
+    cyan:   [34,  211, 238],
+    blue:   [96,  165, 250],
+    violet: [167, 139, 250],
+    pink:   [244, 114, 182],
+  };
+  function rgb(c,a){return `rgba(${c[0]},${c[1]},${c[2]},${a})`}
+  function lerp3(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]}
+
+  /* ── resize ── */
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+  window.addEventListener('resize',()=>{resize();initAll()});
+
+  /* ── LAYER 1: animated grid ── */
+  const GRID=60;
+  let gridOffset=0;
+
+  function drawGrid(t){
+    const pulse = 0.03 + 0.015*Math.sin(t*0.0005);
+    ctx.strokeStyle=rgb(C.blue,pulse);
+    ctx.lineWidth=.5;
+    const ox=(gridOffset%GRID);
+    for(let x=ox;x<W;x+=GRID){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+    for(let y=ox;y<H;y+=GRID){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+    gridOffset+=.15;
+  }
+
+  /* ── LAYER 2: scanning beam ── */
+  let scanY=0;
+  function drawScan(t){
+    scanY=(scanY+.4)%H;
+    const grad=ctx.createLinearGradient(0,scanY-80,0,scanY+4);
+    grad.addColorStop(0,'transparent');
+    grad.addColorStop(.7,rgb(C.cyan,.04));
+    grad.addColorStop(1,rgb(C.cyan,.18));
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,scanY-80,W,84);
+
+    // second slower scan
+    const y2=((t*0.02)+H*0.6)%H;
+    const g2=ctx.createLinearGradient(0,y2-60,0,y2+3);
+    g2.addColorStop(0,'transparent');
+    g2.addColorStop(1,rgb(C.violet,.1));
+    ctx.fillStyle=g2;
+    ctx.fillRect(0,y2-60,W,63);
+  }
+
+  /* ── LAYER 3: nodes & connection lines ── */
+  const NODE_COUNT=38;
+  let nodes=[];
+  function initNodes(){
+    nodes=[];
+    for(let i=0;i<NODE_COUNT;i++){
+      const col=Object.values(C)[Math.floor(Math.random()*4)];
+      nodes.push({
+        x:Math.random()*W, y:Math.random()*H,
+        vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35,
+        r:Math.random()*1.8+.6,
+        col,
+        phase:Math.random()*Math.PI*2,
+      });
+    }
+  }
+  function drawNodes(t){
+    /* connections */
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<160){
+          const alpha=(1-dist/160)*0.18;
+          const mc=lerp3(nodes[i].col,nodes[j].col,.5);
+          ctx.strokeStyle=rgb(mc,alpha);
+          ctx.lineWidth=.6;
+          ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.stroke();
+        }
+      }
+    }
+    /* node dots */
+    nodes.forEach(n=>{
+      const glow=.5+.5*Math.sin(t*.001+n.phase);
+      const r=n.r*(1+.4*glow);
+      ctx.beginPath();ctx.arc(n.x,n.y,r+4,0,Math.PI*2);
+      const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r+4);
+      g.addColorStop(0,rgb(n.col,.25*glow));g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.fill();
+
+      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.fillStyle=rgb(n.col,.7+.3*glow);ctx.fill();
+
+      n.x+=n.vx;n.y+=n.vy;
+      if(n.x<-20)n.x=W+20;if(n.x>W+20)n.x=-20;
+      if(n.y<-20)n.y=H+20;if(n.y>H+20)n.y=-20;
+    });
+  }
+
+  /* ── LAYER 4: floating hex rings ── */
+  const RINGS=5;
+  let rings=[];
+  function initRings(){
+    rings=[];
+    for(let i=0;i<RINGS;i++){
+      const col=Object.values(C)[Math.floor(Math.random()*4)];
+      rings.push({
+        x:Math.random()*W, y:Math.random()*H,
+        maxR:60+Math.random()*90,
+        speed:.0004+Math.random()*.0004,
+        phase:Math.random()*Math.PI*2,
+        col,
+      });
+    }
+  }
+  function hexPath(cx,cy,r,rot){
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const a=rot+i*Math.PI/3;
+      const x=cx+r*Math.cos(a), y=cy+r*Math.sin(a);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+  }
+  function drawRings(t){
+    rings.forEach(rg=>{
+      const progress=((t*rg.speed+rg.phase)%(Math.PI*2))/(Math.PI*2);
+      const r=rg.maxR*progress;
+      const alpha=(1-progress)*0.12;
+      const rot=t*rg.speed*.3;
+      hexPath(rg.x,rg.y,r,rot);
+      ctx.strokeStyle=rgb(rg.col,alpha);
+      ctx.lineWidth=1;ctx.stroke();
+
+      if(progress>0.85){
+        hexPath(rg.x,rg.y,rg.maxR*(progress-.85)/.15*rg.maxR*.25,rot+Math.PI/6);
+        ctx.strokeStyle=rgb(rg.col,alpha*2);ctx.stroke();
+      }
+    });
+  }
+
+  /* ── LAYER 5: data streams (vertical falling chars) ── */
+  const CHARS='01アイウエオカキクケコサシスセソ<>{}[]//\\=+-*';
+  const COLS_W=22;
+  let streams=[];
+  function initStreams(){
+    const cols=Math.floor(W/COLS_W);
+    streams=[];
+    for(let i=0;i<cols;i++){
+      if(Math.random()>.78){
+        streams.push({col:i,y:-Math.random()*H,speed:1+Math.random()*2,len:6+Math.floor(Math.random()*10),chars:[]});
+      }
+    }
+  }
+  function drawStreams(){
+    streams.forEach(s=>{
+      for(let i=0;i<s.len;i++){
+        const alpha=Math.max(0,(s.len-i)/s.len)*0.55;
+        const isHead=i===0;
+        const c=isHead?C.cyan:C.blue;
+        ctx.fillStyle=rgb(c,isHead?.9:alpha*.4);
+        ctx.font=`${isHead?13:11}px monospace`;
+        const ch=CHARS[Math.floor(Math.random()*CHARS.length)];
+        ctx.fillText(ch,s.col*COLS_W,s.y-i*13);
+      }
+      s.y+=s.speed;
+      if(s.y-s.len*13>H){s.y=-20;s.speed=1+Math.random()*2;s.len=6+Math.floor(Math.random()*10)}
+    });
+  }
+
+  /* ── LAYER 6: ambient radial glows ── */
+  function drawGlows(t){
+    const glows=[
+      {x:W*.15,y:H*.1,r:W*.35,col:C.cyan,a:.055},
+      {x:W*.85,y:H*.9,r:W*.3,col:C.violet,a:.05},
+      {x:W*.5,y:H*.5,r:W*.2,col:C.blue,a:.03+.01*Math.sin(t*.0003)},
+    ];
+    glows.forEach(g=>{
+      const grad=ctx.createRadialGradient(g.x,g.y,0,g.x,g.y,g.r);
+      grad.addColorStop(0,rgb(g.col,g.a));grad.addColorStop(1,'transparent');
+      ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+    });
+  }
+
+  /* ── LAYER 7: circuit trace lines ── */
+  const TRACES=12;
+  let traces=[];
+  function initTraces(){
+    traces=[];
+    for(let i=0;i<TRACES;i++){
+      const col=Math.random()>.5?C.cyan:C.violet;
+      const x0=Math.random()*W, y0=Math.random()*H;
+      const segs=[];
+      let cx=x0,cy=y0;
+      for(let s=0;s<4+Math.floor(Math.random()*4);s++){
+        const horiz=s%2===0;
+        const len=(40+Math.random()*120)*(horiz?1:1);
+        const nx=horiz?cx+(Math.random()>.5?len:-len):cx;
+        const ny=horiz?cy:cy+(Math.random()>.5?len:-len);
+        segs.push([nx,ny]);
+        cx=nx;cy=ny;
+      }
+      traces.push({x0,y0,segs,col,progress:Math.random(),speed:.0008+Math.random()*.001,alpha:.06+Math.random()*.08});
+    }
+  }
+  function drawTraces(t){
+    traces.forEach(tr=>{
+      tr.progress=(tr.progress+tr.speed)%1;
+      const fullLen=tr.segs.length;
+      const drawTo=tr.progress*fullLen;
+
+      ctx.strokeStyle=rgb(tr.col,tr.alpha);
+      ctx.lineWidth=.8;
+      ctx.beginPath();
+      ctx.moveTo(tr.x0,tr.y0);
+      for(let i=0;i<fullLen;i++){
+        if(i<drawTo){
+          ctx.lineTo(tr.segs[i][0],tr.segs[i][1]);
+        } else {
+          const frac=drawTo-Math.floor(drawTo);
+          const px=i===0?tr.x0:tr.segs[i-1][0];
+          const py=i===0?tr.y0:tr.segs[i-1][1];
+          ctx.lineTo(px+(tr.segs[i][0]-px)*frac,py+(tr.segs[i][1]-py)*frac);
+          break;
+        }
+      }
+      ctx.stroke();
+
+      // glowing dot at tip
+      const tipIdx=Math.min(Math.floor(drawTo),fullLen-1);
+      const frac2=drawTo-Math.floor(drawTo);
+      const px2=tipIdx===0?tr.x0:tr.segs[tipIdx-1][0];
+      const py2=tipIdx===0?tr.y0:tr.segs[tipIdx-1][1];
+      const tipX=px2+(tr.segs[tipIdx][0]-px2)*frac2;
+      const tipY=py2+(tr.segs[tipIdx][1]-py2)*frac2;
+      const g2=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,6);
+      g2.addColorStop(0,rgb(tr.col,.8));g2.addColorStop(1,'transparent');
+      ctx.fillStyle=g2;ctx.beginPath();ctx.arc(tipX,tipY,6,0,Math.PI*2);ctx.fill();
+    });
+  }
+
+  /* ── main loop ── */
+  function initAll(){initNodes();initRings();initStreams();initTraces()}
+  function loop(t){
+    ctx.clearRect(0,0,W,H);
+    drawGlows(t);
+    drawGrid(t);
+    drawTraces(t);
+    drawNodes(t);
+    drawRings(t);
+    drawScan(t);
+    drawStreams();
+    raf=requestAnimationFrame(loop);
+  }
+
+  resize();
+  initAll();
+  raf=requestAnimationFrame(loop);
+
+  /* pause when tab hidden for performance */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){cancelAnimationFrame(raf)}
+    else{raf=requestAnimationFrame(loop)}
+  });
+})();
 </script>
 </body>
 </html>
